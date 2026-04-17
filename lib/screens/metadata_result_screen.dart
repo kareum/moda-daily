@@ -4,6 +4,7 @@ import 'package:photo_manager/photo_manager.dart';
 
 import '../models/extraction_result.dart';
 import '../widgets/components/index.dart';
+import 'archive_list_screen.dart';
 import 'travel_map_screen.dart';
 
 /// 추출된 메타데이터 결과 화면 — Editorial Cartography 디자인 적용.
@@ -33,7 +34,7 @@ class _MetadataResultScreenState extends State<MetadataResultScreen> {
       ),
       bottomNavigationBar: AppBottomNavBar(
         currentTab: _currentTab,
-        onTabSelected: (tab) => setState(() => _currentTab = tab),
+        onTabSelected: _onTabSelected,
       ),
       body: widget.result.hasData
           ? _ResultBody(
@@ -43,6 +44,16 @@ class _MetadataResultScreenState extends State<MetadataResultScreen> {
             )
           : const _NoGpsBody(),
     );
+  }
+
+  void _onTabSelected(NavTab tab) {
+    setState(() => _currentTab = tab);
+    if (tab == NavTab.export) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ArchiveListScreen()),
+      ).then((_) => setState(() => _currentTab = NavTab.metadata));
+    }
   }
 
   void _goToMap() {

@@ -6,6 +6,7 @@ import '../core/theme/app_spacing.dart';
 import '../core/theme/app_typography.dart';
 import '../widgets/components/bottom_nav_bar.dart';
 import '../widgets/components/primary_cta_button.dart';
+import 'archive_list_screen.dart';
 import 'photo_selection_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -28,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
         appBar: _HomeTopBar(),
         bottomNavigationBar: AppBottomNavBar(
           currentTab: _currentTab,
-          onTabSelected: (tab) => setState(() => _currentTab = tab),
+          onTabSelected: _onTabSelected,
         ),
         body: SingleChildScrollView(
           padding: EdgeInsets.only(
@@ -72,6 +73,16 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  void _onTabSelected(NavTab tab) {
+    setState(() => _currentTab = tab);
+    if (tab == NavTab.export) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ArchiveListScreen()),
+      ).then((_) => setState(() => _currentTab = NavTab.photos));
+    }
   }
 
   void _goToPhotoSelection(BuildContext context) {

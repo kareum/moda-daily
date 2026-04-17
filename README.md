@@ -195,9 +195,10 @@ HomeScreen
 
 | # | 작업 | 파일 | 상태 |
 |---|---|---|---|
-| 11 | `VideoCreationScreen` — 생성 흐름 (진행 → 완료 → 저장) | `screens/` | `[ ]` |
-| 12 | `ArchiveListScreen` — 저장된 영상 목록 | `screens/` | `[ ]` |
-| 13 | `VideoDetailScreen` — 영상 재생 + GPS 경로 리플레이 | `screens/` | `[ ]` |
+| 11 | `VideoCreationScreen` — 생성 흐름 (진행 → 완료 → 저장) | `screens/travel_map_screen.dart` FAB + `VideoProgressSheet` | `[x]` |
+| 12 | `ArchiveListScreen` — 저장된 영상 목록 | `screens/archive_list_screen.dart` | `[x]` |
+| 13 | `VideoDetailScreen` — 영상 재생 + GPS 경로 리플레이 | `screens/video_detail_screen.dart` | `[x]` |
+| 14 | 하단 탭 `export` → `ArchiveListScreen` 네비게이션 연결 | `home_screen.dart`, `metadata_result_screen.dart` | `[x]` |
 
 ### 레이어 데이터 흐름
 ```
