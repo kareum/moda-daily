@@ -13,7 +13,14 @@ class PhotoService {
   // ─── 권한 ────────────────────────────────────────────────────────────────
 
   static Future<PermissionState> requestPermission() =>
-      PhotoManager.requestPermissionExtend();
+      PhotoManager.requestPermissionExtend(
+        requestOption: const PermissionRequestOption(
+          androidPermission: AndroidPermission(
+            type: RequestType.common,
+            mediaLocation: true,
+          ),
+        ),
+      );
 
   static Future<void> openSettings() => PhotoManager.openSetting();
 

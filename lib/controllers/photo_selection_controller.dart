@@ -49,6 +49,9 @@ class PhotoSelectionController extends ChangeNotifier {
   // ─── 초기화 ───────────────────────────────────────────────────────────────
 
   Future<void> initialize() async {
+    // ACCESS_MEDIA_LOCATION 포함 권한 요청
+    // Android 10+에서 이 권한 없이 파일 읽으면 GPS EXIF가 자동 제거됨
+    PhotoManager.setIgnorePermissionCheck(false);
     final state = await PhotoService.requestPermission();
     _permissionStatus = switch (state) {
       PermissionState.authorized => PermissionStatus.granted,

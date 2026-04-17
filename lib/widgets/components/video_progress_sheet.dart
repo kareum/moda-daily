@@ -25,12 +25,14 @@ class VideoProgressSheet extends StatelessWidget {
   final ArchiveState state;
   final VoidCallback? onDone;
   final VoidCallback? onCancel;
+  final VoidCallback? onGoToArchives;
 
   const VideoProgressSheet({
     super.key,
     required this.state,
     this.onDone,
     this.onCancel,
+    this.onGoToArchives,
   });
 
   @override
@@ -60,7 +62,10 @@ class VideoProgressSheet extends StatelessWidget {
             icon: Icons.edit_outlined,
             onCancel: onCancel,
           ),
-        ArchiveStateDone _ => _DoneBody(onDone: onDone),
+        ArchiveStateDone _ => _DoneBody(
+            onDone: onDone,
+            onGoToArchives: onGoToArchives,
+          ),
         final ArchiveStateError e =>
           _ErrorBody(message: e.message, onClose: onCancel),
         ArchiveStateIdle _ => const SizedBox.shrink(),
@@ -156,7 +161,8 @@ class _ProgressBody extends StatelessWidget {
 
 class _DoneBody extends StatelessWidget {
   final VoidCallback? onDone;
-  const _DoneBody({this.onDone});
+  final VoidCallback? onGoToArchives;
+  const _DoneBody({this.onDone, this.onGoToArchives});
 
   @override
   Widget build(BuildContext context) {
@@ -165,41 +171,64 @@ class _DoneBody extends StatelessWidget {
       children: [
         _SheetHandle(),
         const SizedBox(height: AppSpacing.s8),
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: AppColors.secondary.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
+        GestureDetector(
+          onTap: onGoToArchives,
+          child: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.secondary.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.check_circle_outline,
+                color: AppColors.secondary, size: 28),
           ),
-          child: const Icon(Icons.check_circle_outline,
-              color: AppColors.secondary, size: 28),
         ),
         const SizedBox(height: AppSpacing.s4),
         Text('영상이 저장됐어요!',
             style:
                 AppTypography.titleMd.copyWith(color: AppColors.onSurface)),
         const SizedBox(height: AppSpacing.s2),
-        Text('카메라 롤의 TravelMap ArchiVer 앨범을 확인하세요.',
+        Text('아이콘을 탭하면 보관함으로 이동해요.',
             style: AppTypography.bodyMd
                 .copyWith(color: AppColors.onSurfaceVariant),
             textAlign: TextAlign.center),
         const SizedBox(height: AppSpacing.s8),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                  borderRadius: AppSpacing.pillRadius),
-              padding:
-                  const EdgeInsets.symmetric(vertical: AppSpacing.s4),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                      color: AppColors.outlineVariant.withValues(alpha: 0.4)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: AppSpacing.pillRadius),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: AppSpacing.s4),
+                ),
+                onPressed: onDone,
+                child: Text('닫기',
+                    style: AppTypography.titleSm
+                        .copyWith(color: AppColors.onSurfaceVariant)),
+              ),
             ),
-            onPressed: onDone,
-            child: Text('확인',
-                style: AppTypography.titleSm
-                    .copyWith(color: Colors.white)),
-          ),
+            const SizedBox(width: AppSpacing.s3),
+            Expanded(
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: AppSpacing.pillRadius),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: AppSpacing.s4),
+                ),
+                onPressed: onGoToArchives,
+                child: Text('보관함 보기',
+                    style: AppTypography.titleSm
+                        .copyWith(color: Colors.white)),
+              ),
+            ),
+          ],
         ),
       ],
     );

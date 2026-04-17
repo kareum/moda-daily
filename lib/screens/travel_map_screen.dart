@@ -13,6 +13,7 @@ import '../widgets/components/index.dart';
 import '../widgets/map_photo_marker.dart';
 import '../widgets/map_route_layer.dart';
 import '../widgets/photo_info_panel.dart';
+import 'archive_list_screen.dart';
 
 /// 여행 경로 지도 화면.
 /// - TravelMapController를 구독하여 마커/경로선/하단 패널을 렌더링
@@ -248,6 +249,13 @@ class _TravelMapScreenState extends State<TravelMapScreen> {
           onCancel: () {
             _archiveCtrl.resetState();
             Navigator.pop(context);
+          },
+          onGoToArchives: () {
+            Navigator.pop(context); // 바텀시트 닫기
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ArchiveListScreen()),
+            );
           },
         ),
       ),
