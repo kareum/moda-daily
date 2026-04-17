@@ -146,7 +146,7 @@ class _Controls extends StatelessWidget {
         ? position.inMilliseconds / duration.inMilliseconds
         : 0.0;
 
-    return Positioned.fill(
+    return SizedBox.expand(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [

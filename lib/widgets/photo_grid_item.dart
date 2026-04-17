@@ -5,7 +5,7 @@ import 'package:photo_manager/photo_manager.dart';
 
 /// 사진 그리드의 단일 셀.
 /// 외부 상태에 전혀 의존하지 않고 constructor로만 데이터를 받는다.
-class PhotoGridItem extends StatelessWidget {
+class PhotoGridItem extends StatefulWidget {
   final AssetEntity asset;
   final bool isSelected;
   final VoidCallback onTap;
@@ -18,45 +18,89 @@ class PhotoGridItem extends StatelessWidget {
   });
 
   @override
+  State<PhotoGridItem> createState() => _PhotoGridItemState();
+}
+
+class _PhotoGridItemState extends State<PhotoGridItem> {
+  Uint8List? _thumb;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadThumb();
+  }
+
+  Future<void> _loadThumb() async {
+    final data = await widget.asset
+        .thumbnailDataWithSize(const ThumbnailSize.square(200));
+    if (mounted && data != null) setState(() => _thumb = data);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isVideo = widget.asset.type == AssetType.video;
+
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // 썸네일 (비동기 로드)
-          FutureBuilder<Uint8List?>(
-            future: asset.thumbnailDataWithSize(const ThumbnailSize.square(200)),
-            builder: (_, snapshot) {
-              final data = snapshot.data;
-              if (data == null) {
-                return const ColoredBox(
+          // 썸네일
+          _thumb != null
+              ? Image.memory(_thumb!, fit: BoxFit.cover)
+              : const ColoredBox(
                   color: Color(0xFFEEEEEE),
                   child: Center(
                     child: Icon(Icons.image_outlined,
                         color: Colors.black26, size: 28),
                   ),
-                );
-              }
-              return Image.memory(data, fit: BoxFit.cover);
-            },
-          ),
+                ),
 
           // 선택 오버레이
           AnimatedContainer(
             duration: const Duration(milliseconds: 150),
-            color: isSelected
+            color: widget.isSelected
                 ? Theme.of(context).colorScheme.primary.withAlpha(77)
                 : Colors.transparent,
           ),
 
-          // 체크 뱃지
+          // 동영상 배지 (좌하단)
+          if (isVideo)
+            Positioned(
+              left: 5,
+              bottom: 5,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.videocam,
+                        color: Colors.white, size: 11),
+                    const SizedBox(width: 2),
+                    Text(
+                      _fmtDuration(widget.asset.duration),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // 체크 배지 (우상단)
           Positioned(
             top: 6,
             right: 6,
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 150),
-              child: isSelected
+              child: widget.isSelected
                   ? const _CheckBadge(key: ValueKey(true))
                   : const _UncheckBadge(key: ValueKey(false)),
             ),
@@ -64,6 +108,12 @@ class PhotoGridItem extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _fmtDuration(int seconds) {
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 }
 
