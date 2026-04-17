@@ -166,28 +166,29 @@ HomeScreen
 
 | # | 작업 | 파일 | 상태 |
 |---|---|---|---|
-| 1 | `VideoArchive` 모델 (id, title, videoPath, thumbnailPath, createdAt, durationSec) | `models/video_archive.dart` | `[ ]` |
-| 2 | `VideoGpsPoint` 모델 (archiveId, lat, lng, capturedAt, photoAssetId) | `models/video_gps_point.dart` | `[ ]` |
-| 3 | DB 스키마 설계 + `drift` 의존성 추가 | `core/database/` | `[ ]` |
-| 4 | `ArchiveRepository` CRUD (저장/조회/삭제) | `repositories/archive_repository.dart` | `[ ]` |
+| 1 | `VideoArchive` 모델 (id, title, videoPath, thumbnailPath, createdAt, durationSec, editCount 등) | `core/database/app_database.dart` | `[x]` |
+| 2 | `VideoGpsPoint` 모델 (archiveId, lat, lng, capturedAt, photoAssetId, orderIndex) | `core/database/app_database.dart` | `[x]` |
+| 3 | `VideoEditHistory` 테이블 + `drift` DB 설정 | `core/database/` | `[x]` |
+| 4 | `ArchiveRepository` CRUD + 편집이력(saveEdit, rollback) | `repositories/archive_repository.dart` | `[x]` |
 
 ### Phase 2 — 서비스 레이어 `[ ]`
 > 비즈니스 로직. BuildContext / Widget import 금지.
 
 | # | 작업 | 파일 | 상태 |
 |---|---|---|---|
-| 5 | `ffmpeg_kit_flutter` 추가 + `VideoService.exportVideo()` 실제 구현 | `services/video_service.dart` | `[ ]` |
-| 6 | `GalleryService.saveToGallery()` (카메라 롤 저장) | `services/gallery_service.dart` | `[ ]` |
-| 7 | `ArchiveController` — 영상 생성 → GPS 연결 → DB 저장 오케스트레이션 | `controllers/archive_controller.dart` | `[ ]` |
+| 5 | `ffmpeg_kit_flutter` 추가 + `VideoService.exportVideo()` / `applyEdit()` / `extractThumbnail()` | `services/video_service.dart` | `[x]` |
+| 6 | `GalleryService.saveVideoToGallery()` / `saveImageToGallery()` | `services/gallery_service.dart` | `[x]` |
+| 7 | `ArchiveController` — 생성·편집·롤백·삭제 + `ArchiveState` sealed class | `controllers/archive_controller.dart` | `[x]` |
 
 ### Phase 3 — UI 컴포넌트 `[ ]`
 > 디자인만. 로직·Controller 직접 호출 금지. 데이터는 생성자로만 주입.
 
 | # | 작업 | 파일 | 상태 |
 |---|---|---|---|
-| 8 | `VideoProgressSheet` — 생성 진행률 바텀시트 | `widgets/components/` | `[ ]` |
-| 9 | `ArchiveCard` — 저장 영상 카드 (썸네일 + 제목 + GPS 개수) | `widgets/components/` | `[ ]` |
-| 10 | `VideoPlayerCard` — 인라인 영상 플레이어 | `widgets/components/` | `[ ]` |
+| 8 | `VideoProgressSheet` — 생성/편집 진행률 바텀시트 (완료·에러 상태 포함) | `widgets/components/video_progress_sheet.dart` | `[x]` |
+| 9 | `ArchiveCard` — 저장 영상 카드 (썸네일·편집 버전 배지·액션 버튼) | `widgets/components/archive_card.dart` | `[x]` |
+| 10 | `VideoPlayerCard` — 인라인 영상 플레이어 (시크바·글래스 컨트롤) | `widgets/components/video_player_card.dart` | `[x]` |
+| + | `TravelMapScreen` '영상 만들기' FAB 진입점 추가 | `screens/travel_map_screen.dart` | `[x]` |
 
 ### Phase 4 — 화면 조립 `[ ]`
 > 컴포넌트(Phase 3) + 컨트롤러(Phase 2) 연결.
