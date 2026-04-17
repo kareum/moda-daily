@@ -156,6 +156,57 @@ HomeScreen
 
 ---
 
+## F-3 구현 로드맵 — 숏폼 영상 생성 & 아카이브
+
+선택된 사진으로 숏폼 영상을 만들어 저장하고, 생성된 영상과 연결된 GPS 정보를 DB에 보관한다.  
+**원칙: 모든 작업은 모듈 단위로 진행, 디자인(UI)과 기능(로직)은 항상 분리**
+
+### Phase 1 — 데이터 기반 `[ ]`
+> 모든 모듈의 계약서. 가장 먼저 확정.
+
+| # | 작업 | 파일 | 상태 |
+|---|---|---|---|
+| 1 | `VideoArchive` 모델 (id, title, videoPath, thumbnailPath, createdAt, durationSec) | `models/video_archive.dart` | `[ ]` |
+| 2 | `VideoGpsPoint` 모델 (archiveId, lat, lng, capturedAt, photoAssetId) | `models/video_gps_point.dart` | `[ ]` |
+| 3 | DB 스키마 설계 + `drift` 의존성 추가 | `core/database/` | `[ ]` |
+| 4 | `ArchiveRepository` CRUD (저장/조회/삭제) | `repositories/archive_repository.dart` | `[ ]` |
+
+### Phase 2 — 서비스 레이어 `[ ]`
+> 비즈니스 로직. BuildContext / Widget import 금지.
+
+| # | 작업 | 파일 | 상태 |
+|---|---|---|---|
+| 5 | `ffmpeg_kit_flutter` 추가 + `VideoService.exportVideo()` 실제 구현 | `services/video_service.dart` | `[ ]` |
+| 6 | `GalleryService.saveToGallery()` (카메라 롤 저장) | `services/gallery_service.dart` | `[ ]` |
+| 7 | `ArchiveController` — 영상 생성 → GPS 연결 → DB 저장 오케스트레이션 | `controllers/archive_controller.dart` | `[ ]` |
+
+### Phase 3 — UI 컴포넌트 `[ ]`
+> 디자인만. 로직·Controller 직접 호출 금지. 데이터는 생성자로만 주입.
+
+| # | 작업 | 파일 | 상태 |
+|---|---|---|---|
+| 8 | `VideoProgressSheet` — 생성 진행률 바텀시트 | `widgets/components/` | `[ ]` |
+| 9 | `ArchiveCard` — 저장 영상 카드 (썸네일 + 제목 + GPS 개수) | `widgets/components/` | `[ ]` |
+| 10 | `VideoPlayerCard` — 인라인 영상 플레이어 | `widgets/components/` | `[ ]` |
+
+### Phase 4 — 화면 조립 `[ ]`
+> 컴포넌트(Phase 3) + 컨트롤러(Phase 2) 연결.
+
+| # | 작업 | 파일 | 상태 |
+|---|---|---|---|
+| 11 | `VideoCreationScreen` — 생성 흐름 (진행 → 완료 → 저장) | `screens/` | `[ ]` |
+| 12 | `ArchiveListScreen` — 저장된 영상 목록 | `screens/` | `[ ]` |
+| 13 | `VideoDetailScreen` — 영상 재생 + GPS 경로 리플레이 | `screens/` | `[ ]` |
+
+### 레이어 데이터 흐름
+```
+[Phase 1] 모델/DB → [Phase 2] 서비스/컨트롤러   ← 로직 레이어
+                                  ↕
+          [Phase 3] 컴포넌트 → [Phase 4] 화면    ← UI 레이어
+```
+
+---
+
 ## 데이터 보안 원칙
 
 MVP 단계에서는 사용자 사진 데이터를 **서버로 전송하지 않는다.**  
