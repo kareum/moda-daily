@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit_config.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_manager/photo_manager.dart';
 
@@ -53,7 +54,7 @@ class VideoService implements IVideoService {
       }
     });
 
-    final captionFilter = _buildCaptionFilter(
+    final captionFilter = await _buildCaptionFilter(
       assets: assets,
       captions: captions,
       durationPerPhoto: durationPerPhoto,
@@ -65,13 +66,16 @@ class VideoService implements IVideoService {
         ? scaleFilter
         : '$scaleFilter,$captionFilter';
 
-    final command = '-y '
-        '-f concat -safe 0 -i "${concatFile.path}" '
-        '-vf "$vf" '
-        '-r 30 -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p '
-        '"$outputPath"';
-
-    final session = await FFmpegKit.execute(command);
+    // executeWithArguments로 각 인자를 직접 전달 — 문자열 파싱 없이 FFmpeg에 넘어가
+    // 므로 -vf 값 안의 따옴표·콤마 충돌이 없다.
+    final session = await FFmpegKit.executeWithArguments([
+      '-y',
+      '-f', 'concat', '-safe', '0', '-i', concatFile.path,
+      '-vf', vf,
+      '-r', '30', '-c:v', 'libx264', '-preset', 'fast',
+      '-crf', '23', '-pix_fmt', 'yuv420p',
+      outputPath,
+    ]);
     final returnCode = await session.getReturnCode();
 
     await concatFile.delete();
@@ -98,19 +102,20 @@ class VideoService implements IVideoService {
         '${dir.path}/edited_${DateTime.now().millisecondsSinceEpoch}.mp4';
 
     final filters = _buildFilterChain(config);
-    final bgmInput = config.bgmPath != null ? '-i "${config.bgmPath}"' : '';
-    final audioMap = config.bgmPath != null
-        ? '-map 0:v -map 1:a -shortest'
-        : '-an';
 
-    final command = '-y '
-        '-i "$sourceVideoPath" $bgmInput '
-        '-vf "$filters" '
-        '$audioMap '
-        '-c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p '
-        '"$outputPath"';
+    final args = [
+      '-y',
+      '-i', sourceVideoPath,
+      if (config.bgmPath != null) ...[ '-i', config.bgmPath! ],
+      '-vf', filters,
+      if (config.bgmPath != null) ...[ '-map', '0:v', '-map', '1:a', '-shortest' ]
+      else ...[ '-an' ],
+      '-c:v', 'libx264', '-preset', 'fast',
+      '-crf', '23', '-pix_fmt', 'yuv420p',
+      outputPath,
+    ];
 
-    final session = await FFmpegKit.execute(command);
+    final session = await FFmpegKit.executeWithArguments(args);
     final returnCode = await session.getReturnCode();
 
     if (!ReturnCode.isSuccess(returnCode)) {
@@ -130,9 +135,9 @@ class VideoService implements IVideoService {
     final thumbPath =
         '${dir.path}/thumb_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-    final session = await FFmpegKit.execute(
-      '-y -i "$videoPath" -vframes 1 -q:v 2 "$thumbPath"',
-    );
+    final session = await FFmpegKit.executeWithArguments([
+      '-y', '-i', videoPath, '-vframes', '1', '-q:v', '2', thumbPath,
+    ]);
     final returnCode = await session.getReturnCode();
 
     if (!ReturnCode.isSuccess(returnCode)) {
@@ -148,6 +153,18 @@ class VideoService implements IVideoService {
     final dir = Directory('${base.path}/video_exports');
     if (!await dir.exists()) await dir.create(recursive: true);
     return dir;
+  }
+
+  /// assets/fonts/NotoSansKR-Regular.ttf → 앱 문서 디렉토리에 복사 후 경로 반환.
+  /// FFmpeg는 assets 번들을 직접 읽지 못하므로 파일 시스템 경로가 필요하다.
+  static Future<String> _fontPath() async {
+    final base = await getApplicationDocumentsDirectory();
+    final fontFile = File('${base.path}/NotoSansKR-Regular.ttf');
+    if (!await fontFile.exists()) {
+      final data = await rootBundle.load('assets/fonts/NotoSansKR-Regular.ttf');
+      await fontFile.writeAsBytes(data.buffer.asUint8List());
+    }
+    return fontFile.path;
   }
 
   static Future<List<String>> _resolveImagePaths(
@@ -177,13 +194,15 @@ class VideoService implements IVideoService {
     return file;
   }
 
-  static String _buildCaptionFilter({
+  static Future<String> _buildCaptionFilter({
     required List<AssetEntity> assets,
     required Map<String, PhotoCaption>? captions,
     required double durationPerPhoto,
-  }) {
+  }) async {
     if (captions == null || captions.isEmpty) return '';
 
+    final fontPath = await _fontPath();
+    final escapedFontPath = fontPath.replaceAll(':', '\\:');
     final filters = <String>[];
 
     for (int i = 0; i < assets.length; i++) {
@@ -212,7 +231,8 @@ class VideoService implements IVideoService {
           : '';
 
       filters.add(
-        'drawtext=text=\'$escapedText\':'
+        'drawtext=fontfile=\'$escapedFontPath\':'
+        'text=\'$escapedText\':'
         'x=(w-text_w)/2:'
         'y=$y:'
         'fontsize=$fontSize:'
