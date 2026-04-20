@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:photo_manager/photo_manager.dart' hide LatLng;
 
+import '../models/marker_style.dart';
 import '../models/photo_metadata.dart';
 
 /// 지도 내 마커 그룹 (단독 사진 or 클러스터).
@@ -37,6 +40,17 @@ class TravelMapController extends ChangeNotifier {
   PhotoMetadata? _selectedMetadata;
   List<MarkerGroup> _markerGroups = [];
 
+  // ─── 마커 스타일 ────────────────────────────────────────────────────────
+
+  MarkerStyle _markerStyle = MarkerStyle.thumbnail;
+
+  // ─── 타임라인 재생 ──────────────────────────────────────────────────────
+
+  bool _isPlaying = false;
+  int _playIndex = 0;
+  Timer? _playTimer;
+  static const Duration _playInterval = Duration(seconds: 2);
+
   TravelMapController({
     required List<PhotoMetadata> metadata,
     required Map<String, AssetEntity> assetMap,
@@ -52,6 +66,9 @@ class TravelMapController extends ChangeNotifier {
   List<MarkerGroup> get markerGroups => _markerGroups;
   PhotoMetadata? get selectedMetadata => _selectedMetadata;
   double get currentZoom => _currentZoom;
+  MarkerStyle get markerStyle => _markerStyle;
+  bool get isPlaying => _isPlaying;
+  int get playIndex => _playIndex;
 
   /// 경로선용: capturedAt 기준 정렬된 전체 포인트 목록
   List<LatLng> get routePoints =>
@@ -90,6 +107,67 @@ class TravelMapController extends ChangeNotifier {
   void cacheThumb(String assetId, Uint8List data) {
     _thumbCache[assetId] = data;
     // notifyListeners 호출 안 함 — 개별 마커 위젯이 setState로 처리
+  }
+
+  /// 마커 스타일 변경
+  void setMarkerStyle(MarkerStyle style) {
+    _markerStyle = style;
+    notifyListeners();
+  }
+
+  // ─── 타임라인 재생 ──────────────────────────────────────────────────────
+
+  void playTimeline() {
+    if (_allMetadata.isEmpty) return;
+    _isPlaying = true;
+    _playIndex = 0;
+    _selectedMetadata = _allMetadata[0];
+    notifyListeners();
+    _scheduleNext();
+  }
+
+  void pauseTimeline() {
+    _isPlaying = false;
+    _playTimer?.cancel();
+    notifyListeners();
+  }
+
+  void resumeTimeline() {
+    if (_allMetadata.isEmpty || _playIndex >= _allMetadata.length) return;
+    _isPlaying = true;
+    notifyListeners();
+    _scheduleNext();
+  }
+
+  void stopTimeline() {
+    _isPlaying = false;
+    _playIndex = 0;
+    _playTimer?.cancel();
+    _selectedMetadata = null;
+    notifyListeners();
+  }
+
+  void _scheduleNext() {
+    _playTimer?.cancel();
+    _playTimer = Timer(_playInterval, () {
+      if (!_isPlaying) return;
+      final next = _playIndex + 1;
+      if (next >= _allMetadata.length) {
+        _isPlaying = false;
+        notifyListeners();
+        return;
+      }
+      _playIndex = next;
+      _selectedMetadata = _allMetadata[next];
+      notifyListeners();
+      _scheduleNext();
+    });
+  }
+
+  @override
+  void dispose() {
+    _playTimer?.cancel();
+    super.dispose();
   }
 
   // ─── 클러스터 계산 (private) ─────────────────────────────────────────────

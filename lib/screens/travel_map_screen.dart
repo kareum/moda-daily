@@ -7,6 +7,7 @@ import '../controllers/archive_controller.dart';
 import '../controllers/travel_map_controller.dart';
 import '../core/database/app_database.dart';
 import '../models/extraction_result.dart';
+import '../models/marker_style.dart';
 import '../models/photo_metadata.dart';
 import '../repositories/archive_repository.dart';
 import '../widgets/components/index.dart';
@@ -48,10 +49,22 @@ class _TravelMapScreenState extends State<TravelMapScreen> {
     _archiveCtrl = ArchiveController(
       ArchiveRepository(AppDatabase()),
     )..init();
+    _mapCtrl.addListener(_onPlaybackAdvance);
+  }
+
+  void _onPlaybackAdvance() {
+    if (!_mapCtrl.isPlaying) return;
+    final m = _mapCtrl.selectedMetadata;
+    if (m == null) return;
+    _flutterMapCtrl.move(
+      LatLng(m.latitude, m.longitude),
+      _flutterMapCtrl.camera.zoom,
+    );
   }
 
   @override
   void dispose() {
+    _mapCtrl.removeListener(_onPlaybackAdvance);
     _mapCtrl.dispose();
     _archiveCtrl.dispose();
     super.dispose();
@@ -137,6 +150,7 @@ class _TravelMapScreenState extends State<TravelMapScreen> {
           asset: widget.assetMap[meta.assetId],
           isSelected: isSelected,
           controller: _mapCtrl,
+          style: _mapCtrl.markerStyle,
           onTap: () {
             _mapCtrl.selectMarker(isSelected ? null : meta);
             if (!isSelected) {
@@ -214,8 +228,28 @@ class _TravelMapScreenState extends State<TravelMapScreen> {
                 ),
               ),
 
+              // ── 타임라인 재생 컨트롤 ──────────────────────────────────
+              if (_mapCtrl.isPlaying)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: _PlaybackBar(
+                    controller: _mapCtrl,
+                    total: widget.result.metadata.length,
+                    onStop: _mapCtrl.stopTimeline,
+                    onTogglePause: () {
+                      if (_mapCtrl.isPlaying) {
+                        _mapCtrl.pauseTimeline();
+                      } else {
+                        _mapCtrl.resumeTimeline();
+                      }
+                    },
+                  ),
+                ),
+
               // ── 영상 만들기 버튼 ──────────────────────────────────────
-              if (_mapCtrl.selectedMetadata == null)
+              if (_mapCtrl.selectedMetadata == null && !_mapCtrl.isPlaying)
                 Positioned(
                   bottom: 24,
                   left: 24,
@@ -320,6 +354,40 @@ class _TravelMapScreenState extends State<TravelMapScreen> {
             ),
         ],
       ),
+      actions: [
+        // 재생 버튼
+        if (!_mapCtrl.isPlaying)
+          IconButton(
+            icon: const Icon(Icons.play_circle_outline),
+            tooltip: '여행 회상 재생',
+            onPressed: widget.result.metadata.isEmpty
+                ? null
+                : () => _mapCtrl.playTimeline(),
+          ),
+        // 마커 스타일 변경
+        IconButton(
+          icon: const Icon(Icons.style_outlined),
+          tooltip: '마커 스타일',
+          onPressed: _showMarkerStylePicker,
+        ),
+      ],
+    );
+  }
+
+  void _showMarkerStylePicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ListenableBuilder(
+        listenable: _mapCtrl,
+        builder: (_, __) => _MarkerStyleSheet(
+          current: _mapCtrl.markerStyle,
+          onSelected: (style) {
+            _mapCtrl.setMarkerStyle(style);
+            Navigator.pop(context);
+          },
+        ),
+      ),
     );
   }
 
@@ -346,6 +414,162 @@ class _TravelMapScreenState extends State<TravelMapScreen> {
     final first = list.first.capturedAt;
     final last = list.last.capturedAt;
     return last.difference(first).inDays + 1;
+  }
+}
+
+// ─── 재생 컨트롤 바 ────────────────────────────────────────────────────────
+
+class _PlaybackBar extends StatelessWidget {
+  final TravelMapController controller;
+  final int total;
+  final VoidCallback onStop;
+  final VoidCallback onTogglePause;
+
+  const _PlaybackBar({
+    required this.controller,
+    required this.total,
+    required this.onStop,
+    required this.onTogglePause,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final idx = controller.playIndex;
+    final ratio = total > 1 ? idx / (total - 1) : 1.0;
+
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        decoration: BoxDecoration(
+          color: Colors.black.withAlpha(200),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 진행 바
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: ratio,
+                minHeight: 4,
+                backgroundColor: Colors.white24,
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.orange),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                // 카운터
+                Text(
+                  '${idx + 1} / $total',
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const Spacer(),
+                // 일시정지/재개
+                IconButton(
+                  icon: Icon(
+                    controller.isPlaying ? Icons.pause : Icons.play_arrow,
+                    color: Colors.white,
+                  ),
+                  onPressed: onTogglePause,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                const SizedBox(width: 16),
+                // 정지
+                IconButton(
+                  icon: const Icon(Icons.stop, color: Colors.white),
+                  onPressed: onStop,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── 마커 스타일 선택 시트 ──────────────────────────────────────────────────
+
+class _MarkerStyleSheet extends StatelessWidget {
+  final MarkerStyle current;
+  final ValueChanged<MarkerStyle> onSelected;
+
+  const _MarkerStyleSheet({required this.current, required this.onSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '마커 스타일',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: kMarkerStylePresets.map((preset) {
+              final isSelected = current.type == preset.style.type &&
+                  current.icon == preset.style.icon;
+              return GestureDetector(
+                onTap: () => onSelected(preset.style),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: preset.style.type == MarkerStyleType.icon
+                            ? preset.style.backgroundColor
+                            : Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(
+                          preset.style.type == MarkerStyleType.icon ? 26 : 10,
+                        ),
+                        border: Border.all(
+                          color: isSelected
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.transparent,
+                          width: 2.5,
+                        ),
+                      ),
+                      child: preset.style.type == MarkerStyleType.icon
+                          ? Center(
+                              child: Icon(
+                                preset.style.icon,
+                                color: preset.style.iconColor,
+                                size: 26,
+                              ),
+                            )
+                          : const Center(
+                              child: Icon(Icons.photo_camera,
+                                  size: 22, color: Colors.grey),
+                            ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(preset.label,
+                        style: const TextStyle(fontSize: 12)),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
   }
 }
 

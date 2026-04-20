@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 import '../controllers/travel_map_controller.dart';
+import '../models/marker_style.dart';
 import '../models/photo_metadata.dart';
 
 /// 단독 사진 마커 위젯.
@@ -13,8 +14,9 @@ class MapPhotoMarker extends StatefulWidget {
   final PhotoMetadata metadata;
   final AssetEntity? asset;
   final bool isSelected;
-  final TravelMapController controller; // 썸네일 캐시 접근용
+  final TravelMapController controller;
   final VoidCallback onTap;
+  final MarkerStyle style;
 
   const MapPhotoMarker({
     super.key,
@@ -23,6 +25,7 @@ class MapPhotoMarker extends StatefulWidget {
     required this.isSelected,
     required this.controller,
     required this.onTap,
+    this.style = MarkerStyle.thumbnail,
   });
 
   @override
@@ -58,21 +61,25 @@ class _MapPhotoMarkerState extends State<MapPhotoMarker> {
   Widget build(BuildContext context) {
     final borderColor = widget.isSelected ? Colors.orange : Colors.white;
     final borderWidth = widget.isSelected ? 3.0 : 2.0;
+    final size = widget.isSelected ? 52.0 : 44.0;
 
     return GestureDetector(
       onTap: widget.onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 사진 썸네일 컨테이너
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            width: widget.isSelected ? 52 : 44,
-            height: widget.isSelected ? 52 : 44,
+            width: size,
+            height: size,
             decoration: BoxDecoration(
               border: Border.all(color: borderColor, width: borderWidth),
-              borderRadius: BorderRadius.circular(8),
-              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(
+                widget.style.type == MarkerStyleType.icon ? size / 2 : 8,
+              ),
+              color: widget.style.type == MarkerStyleType.icon
+                  ? widget.style.backgroundColor
+                  : Colors.grey.shade200,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withAlpha(60),
@@ -81,48 +88,75 @@ class _MapPhotoMarkerState extends State<MapPhotoMarker> {
                 ),
               ],
             ),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: _thumb != null
-                      ? Image.memory(_thumb!, fit: BoxFit.cover)
-                      : Icon(
-                          widget.metadata.isVideo
-                              ? Icons.videocam_outlined
-                              : Icons.photo_camera,
-                          size: 20,
-                          color: Colors.grey.shade400,
-                        ),
-                ),
-                // 영상 마커 배지
-                if (widget.metadata.isVideo)
-                  Positioned(
-                    right: 2,
-                    bottom: 2,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.all(Radius.circular(3)),
-                      ),
-                      child: const Icon(
-                        Icons.play_arrow,
-                        color: Colors.white,
-                        size: 10,
-                      ),
-                    ),
+            child: widget.style.type == MarkerStyleType.icon
+                ? _IconMarkerBody(style: widget.style, size: size)
+                : _ThumbnailMarkerBody(
+                    thumb: _thumb,
+                    isVideo: widget.metadata.isVideo,
                   ),
-              ],
-            ),
           ),
-          // 핀 삼각형
           CustomPaint(
             size: const Size(12, 8),
             painter: _PinPainter(color: borderColor),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── 마커 내부 바디 위젯 ───────────────────────────────────────────────────
+
+class _ThumbnailMarkerBody extends StatelessWidget {
+  final Uint8List? thumb;
+  final bool isVideo;
+  const _ThumbnailMarkerBody({required this.thumb, required this.isVideo});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: thumb != null
+              ? Image.memory(thumb!, fit: BoxFit.cover)
+              : Icon(
+                  isVideo ? Icons.videocam_outlined : Icons.photo_camera,
+                  size: 20,
+                  color: Colors.grey.shade400,
+                ),
+        ),
+        if (isVideo)
+          Positioned(
+            right: 2,
+            bottom: 2,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.all(Radius.circular(3)),
+              ),
+              child: const Icon(Icons.play_arrow, color: Colors.white, size: 10),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _IconMarkerBody extends StatelessWidget {
+  final MarkerStyle style;
+  final double size;
+  const _IconMarkerBody({required this.style, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Icon(
+        style.icon,
+        color: style.iconColor,
+        size: size * 0.5,
       ),
     );
   }
