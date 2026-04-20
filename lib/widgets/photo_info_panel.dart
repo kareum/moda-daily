@@ -13,12 +13,16 @@ class PhotoInfoPanel extends StatelessWidget {
   final PhotoMetadata? metadata;
   final AssetEntity? asset;
   final VoidCallback onClose;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
 
   const PhotoInfoPanel({
     super.key,
     required this.metadata,
     required this.asset,
     required this.onClose,
+    this.onPrevious,
+    this.onNext,
   });
 
   @override
@@ -26,7 +30,13 @@ class PhotoInfoPanel extends StatelessWidget {
     final m = metadata;
     if (m == null) return const SizedBox.shrink();
 
-    return Container(
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        final dx = details.primaryVelocity ?? 0;
+        if (dx < -300) onNext?.call();   // 왼쪽 스와이프 → 다음
+        if (dx > 300) onPrevious?.call(); // 오른쪽 스와이프 → 이전
+      },
+      child: Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -136,7 +146,8 @@ class PhotoInfoPanel extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ),  // Container
+    );  // GestureDetector
   }
 }
 

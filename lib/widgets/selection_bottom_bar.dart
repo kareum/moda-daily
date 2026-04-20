@@ -60,7 +60,7 @@ class SelectionBottomBar extends StatelessWidget {
             FilledButton.icon(
               onPressed: onExtract,
               icon: const Icon(Icons.analytics_outlined, size: 18),
-              label: const Text('메타데이터 추출'),
+              label: const Text('지도에 그리기'),
             ),
           ],
         ),

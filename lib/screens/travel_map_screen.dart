@@ -59,18 +59,22 @@ class _TravelMapScreenState extends State<TravelMapScreen> {
 
   // ─── 카메라 초기 설정 ────────────────────────────────────────────────────
 
+  static const double _maxZoom = 18.0;
+
   MapOptions get _mapOptions {
     final points = _mapCtrl.routePoints;
     if (points.isEmpty) {
       return const MapOptions(
         initialCenter: LatLng(37.5665, 126.9780),
         initialZoom: 10,
+        maxZoom: _maxZoom,
       );
     }
     if (points.length == 1) {
       return MapOptions(
         initialCenter: points.first,
         initialZoom: 14,
+        maxZoom: _maxZoom,
         onMapEvent: _onMapEvent,
       );
     }
@@ -79,6 +83,7 @@ class _TravelMapScreenState extends State<TravelMapScreen> {
         bounds: LatLngBounds.fromPoints(points),
         padding: const EdgeInsets.all(56),
       ),
+      maxZoom: _maxZoom,
       onMapEvent: _onMapEvent,
     );
   }
@@ -204,6 +209,8 @@ class _TravelMapScreenState extends State<TravelMapScreen> {
                       ? widget.assetMap[_mapCtrl.selectedMetadata!.assetId]
                       : null,
                   onClose: () => _mapCtrl.selectMarker(null),
+                  onPrevious: () => _moveToAdjacentPhoto(-1),
+                  onNext: () => _moveToAdjacentPhoto(1),
                 ),
               ),
 
@@ -223,6 +230,25 @@ class _TravelMapScreenState extends State<TravelMapScreen> {
           );
         },
       ),
+    );
+  }
+
+  void _moveToAdjacentPhoto(int direction) {
+    final list = widget.result.metadata; // 시간순 정렬된 목록
+    final current = _mapCtrl.selectedMetadata;
+    if (current == null || list.isEmpty) return;
+
+    final idx = list.indexWhere((m) => m.assetId == current.assetId);
+    if (idx == -1) return;
+
+    final nextIdx = (idx + direction).clamp(0, list.length - 1);
+    if (nextIdx == idx) return;
+
+    final next = list[nextIdx];
+    _mapCtrl.selectMarker(next);
+    _flutterMapCtrl.move(
+      LatLng(next.latitude, next.longitude),
+      _flutterMapCtrl.camera.zoom,
     );
   }
 

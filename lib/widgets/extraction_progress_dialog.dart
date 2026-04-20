@@ -20,7 +20,7 @@ class ExtractionProgressDialog extends StatelessWidget {
     return PopScope(
       canPop: false, // 추출 중 뒤로가기 차단
       child: AlertDialog(
-        title: const Text('메타데이터 추출 중'),
+        title: const Text('지도에 그리는 중'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
