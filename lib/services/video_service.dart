@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
@@ -54,10 +55,12 @@ class VideoService implements IVideoService {
       }
     });
 
-    final captionFilter = await _buildCaptionFilter(
+    // textfile= 방식: 한글 등 멀티바이트 텍스트는 파일로 써서 전달 (인라인 text= 깨짐)
+    final (:captionFilter, :textFiles) = await _buildCaptionFilter(
       assets: assets,
       captions: captions,
       durationPerPhoto: durationPerPhoto,
+      dir: dir,
     );
 
     const scaleFilter = 'scale=1080:1920:force_original_aspect_ratio=decrease,'
@@ -66,8 +69,6 @@ class VideoService implements IVideoService {
         ? scaleFilter
         : '$scaleFilter,$captionFilter';
 
-    // executeWithArguments로 각 인자를 직접 전달 — 문자열 파싱 없이 FFmpeg에 넘어가
-    // 므로 -vf 값 안의 따옴표·콤마 충돌이 없다.
     final session = await FFmpegKit.executeWithArguments([
       '-y',
       '-f', 'concat', '-safe', '0', '-i', concatFile.path,
@@ -79,6 +80,9 @@ class VideoService implements IVideoService {
     final returnCode = await session.getReturnCode();
 
     await concatFile.delete();
+    for (final f in textFiles) {
+      await f.delete().catchError((_) async => f);
+    }
 
     if (!ReturnCode.isSuccess(returnCode)) {
       final logs = await session.getAllLogsAsString();
@@ -194,27 +198,39 @@ class VideoService implements IVideoService {
     return file;
   }
 
-  static Future<String> _buildCaptionFilter({
+  /// 캡션 drawtext 필터 체인을 빌드한다.
+  ///
+  /// - 한글 지원: `text=` 인라인 대신 `textfile=` 사용 (UTF-8 파일로 전달)
+  /// - 타이밍: `between(t,s,e)` 대신 `gte(t,s)*lt(t,e)` 사용
+  ///   (between의 콤마가 FFmpeg 필터 파서에서 구분자로 오인되는 문제 방지)
+  static Future<({String captionFilter, List<File> textFiles})> _buildCaptionFilter({
     required List<AssetEntity> assets,
     required Map<String, PhotoCaption>? captions,
     required double durationPerPhoto,
+    required Directory dir,
   }) async {
-    if (captions == null || captions.isEmpty) return '';
+    if (captions == null || captions.isEmpty) {
+      return (captionFilter: '', textFiles: <File>[]);
+    }
 
     final fontPath = await _fontPath();
-    final escapedFontPath = fontPath.replaceAll(':', '\\:');
     final filters = <String>[];
+    final textFiles = <File>[];
 
     for (int i = 0; i < assets.length; i++) {
       final id = assets[i].id;
       final caption = captions[id];
       if (caption == null) continue;
 
-      final start = i * durationPerPhoto;
-      final end = (i + 1) * durationPerPhoto;
+      final start = (i * durationPerPhoto).toStringAsFixed(3);
+      final end = ((i + 1) * durationPerPhoto).toStringAsFixed(3);
       final style = caption.style;
 
-      final escapedText = _escapeDrawtext(caption.text);
+      // 텍스트를 UTF-8 파일로 저장 — 한글 등 멀티바이트 문자 지원
+      final textFile = File('${dir.path}/caption_$i.txt');
+      await textFile.writeAsString(caption.text, encoding: utf8);
+      textFiles.add(textFile);
+
       final textColor = _toFfmpegColor(style.textColorHex);
       final bgColor = _toFfmpegColor(style.bgColorHex);
 
@@ -230,26 +246,20 @@ class VideoService implements IVideoService {
           ? 'box=1:boxcolor=$bgColor:boxborderw=12:'
           : '';
 
+      // enable 표현식: gte(t,start)*lt(t,end) — 콤마 없이 시간 범위 제한
       filters.add(
-        'drawtext=fontfile=\'$escapedFontPath\':'
-        'text=\'$escapedText\':'
+        'drawtext=fontfile=$fontPath:'
+        'textfile=${textFile.path}:'
         'x=(w-text_w)/2:'
         'y=$y:'
         'fontsize=$fontSize:'
         'fontcolor=$textColor:'
         '$boxPart'
-        "enable='between(t,$start,$end)'",
+        'enable=gte(t\\,$start)*lt(t\\,$end)',
       );
     }
 
-    return filters.join(',');
-  }
-
-  static String _escapeDrawtext(String text) {
-    return text
-        .replaceAll('\\', '\\\\')
-        .replaceAll("'", "\\'")
-        .replaceAll(':', '\\:');
+    return (captionFilter: filters.join(','), textFiles: textFiles);
   }
 
   static String _toFfmpegColor(int argb) {
