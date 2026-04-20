@@ -6,12 +6,13 @@ import 'package:photo_manager/photo_manager.dart' hide LatLng;
 import '../controllers/archive_controller.dart';
 import '../controllers/caption_controller.dart';
 import '../controllers/travel_map_controller.dart';
-import '../core/database/app_database.dart';
+import '../core/di/app_dependencies.dart';
+import '../interfaces/i_archive_view_model.dart';
+import '../interfaces/i_caption_view_model.dart';
+import '../interfaces/i_travel_map_view_model.dart';
 import '../models/extraction_result.dart';
 import '../models/marker_style.dart';
 import '../models/photo_metadata.dart';
-import '../repositories/archive_repository.dart';
-import '../repositories/caption_repository.dart';
 import '../widgets/caption_input_sheet.dart';
 import '../widgets/components/index.dart';
 import '../widgets/map_photo_marker.dart';
@@ -37,10 +38,10 @@ class TravelMapScreen extends StatefulWidget {
 }
 
 class _TravelMapScreenState extends State<TravelMapScreen> {
-  late final TravelMapController _mapCtrl;
+  late final ITravelMapViewModel _mapCtrl;
   late final MapController _flutterMapCtrl;
-  late final ArchiveController _archiveCtrl;
-  late final CaptionController _captionCtrl;
+  late final IArchiveViewModel _archiveCtrl;
+  late final ICaptionViewModel _captionCtrl;
 
   @override
   void initState() {
@@ -50,12 +51,10 @@ class _TravelMapScreenState extends State<TravelMapScreen> {
       metadata: widget.result.metadata,
       assetMap: widget.assetMap,
     );
-    _archiveCtrl = ArchiveController(
-      ArchiveRepository(AppDatabase()),
-    )..init();
-    _captionCtrl = CaptionController(CaptionRepository(AppDatabase()))
+    _archiveCtrl = AppDependencies.instance.createArchiveController();
+    _captionCtrl = AppDependencies.instance.createCaptionController()
       ..loadCaptions(widget.result.metadata.map((m) => m.assetId).toList());
-    _mapCtrl.addListener(_onPlaybackAdvance);
+    (_mapCtrl as TravelMapController).addListener(_onPlaybackAdvance);
   }
 
   void _onPlaybackAdvance() {
@@ -70,10 +69,10 @@ class _TravelMapScreenState extends State<TravelMapScreen> {
 
   @override
   void dispose() {
-    _mapCtrl.removeListener(_onPlaybackAdvance);
-    _mapCtrl.dispose();
-    _archiveCtrl.dispose();
-    _captionCtrl.dispose();
+    (_mapCtrl as TravelMapController).removeListener(_onPlaybackAdvance);
+    (_mapCtrl as TravelMapController).dispose();
+    (_archiveCtrl as ArchiveController).dispose();
+    (_captionCtrl as CaptionController).dispose();
     super.dispose();
   }
 
@@ -461,7 +460,7 @@ class _TravelMapScreenState extends State<TravelMapScreen> {
 // ─── 재생 컨트롤 바 ────────────────────────────────────────────────────────
 
 class _PlaybackBar extends StatelessWidget {
-  final TravelMapController controller;
+  final ITravelMapViewModel controller;
   final int total;
   final VoidCallback onStop;
   final VoidCallback onTogglePause;

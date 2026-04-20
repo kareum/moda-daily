@@ -10,7 +10,7 @@ import '../core/database/app_database.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_spacing.dart';
 import '../core/theme/app_typography.dart';
-import '../repositories/archive_repository.dart';
+import '../interfaces/i_archive_view_model.dart';
 import '../services/video_service.dart';
 import '../widgets/components/index.dart';
 
@@ -19,13 +19,15 @@ import '../widgets/components/index.dart';
 /// [initialEditMode] = true이면 화면 진입 시 편집 패널을 바로 연다.
 class VideoDetailScreen extends StatefulWidget {
   final VideoArchive archive;
-  final ArchiveController controller;
+
+  /// 구체 클래스가 아닌 인터페이스에만 의존한다.
+  final IArchiveViewModel viewModel;
   final bool initialEditMode;
 
   const VideoDetailScreen({
     super.key,
     required this.archive,
-    required this.controller,
+    required this.viewModel,
     this.initialEditMode = false,
   });
 
@@ -52,10 +54,8 @@ class _VideoDetailScreenState extends State<VideoDetailScreen> {
   }
 
   Future<void> _loadData() async {
-    final repo = ArchiveRepository(AppDatabase());
-    final points = await repo.getGpsPoints(widget.archive.id);
-    final history =
-        await widget.controller.loadEditHistory(widget.archive.id);
+    final points = await widget.viewModel.getGpsPoints(widget.archive.id);
+    final history = await widget.viewModel.loadEditHistory(widget.archive.id);
     if (mounted) {
       setState(() {
         _gpsPoints = points;
@@ -77,16 +77,16 @@ class _VideoDetailScreenState extends State<VideoDetailScreen> {
         ),
       ),
       body: ListenableBuilder(
-        listenable: widget.controller,
+        listenable: widget.viewModel,
         builder: (context, _) {
           // 편집/생성 진행 중이면 진행 시트만 표시
-          final state = widget.controller.state;
+          final state = widget.viewModel.state;
           if (state is ArchiveStateCreating || state is ArchiveStateEditing) {
             return Center(
               child: VideoProgressSheet(
                 state: state,
-                onDone: () => widget.controller.resetState(),
-                onCancel: () => widget.controller.resetState(),
+                onDone: () => widget.viewModel.resetState(),
+                onCancel: () => widget.viewModel.resetState(),
               ),
             );
           }
@@ -218,12 +218,12 @@ class _VideoDetailScreenState extends State<VideoDetailScreen> {
     setState(() => _showEditPanel = false);
 
     final config = VideoEditConfig(speed: _speed);
-    await widget.controller.applyEdit(
+    await widget.viewModel.applyEdit(
       archiveId: widget.archive.id,
       config: config,
     );
 
-    if (mounted && widget.controller.state is ArchiveStateDone) {
+    if (mounted && widget.viewModel.state is ArchiveStateDone) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('편집이 저장됐어요.',
@@ -265,7 +265,7 @@ class _VideoDetailScreenState extends State<VideoDetailScreen> {
     );
 
     if (confirmed == true) {
-      await widget.controller.rollback(
+      await widget.viewModel.rollback(
           widget.archive.id, history.version);
       await _loadData();
     }

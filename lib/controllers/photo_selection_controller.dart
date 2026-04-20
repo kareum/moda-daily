@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 
+import '../interfaces/i_photo_selection_view_model.dart';
 import '../services/photo_service.dart';
 
 enum PermissionStatus { initial, granted, limited, denied }
@@ -8,7 +9,8 @@ enum PermissionStatus { initial, granted, limited, denied }
 /// 사진 선택 화면의 상태를 관리한다.
 /// Screen은 이 Controller를 구독(ListenableBuilder)하고,
 /// 직접 PhotoService를 호출하지 않는다.
-class PhotoSelectionController extends ChangeNotifier {
+class PhotoSelectionController extends ChangeNotifier
+    implements IPhotoSelectionViewModel {
   // ─── 상태 ─────────────────────────────────────────────────────────────────
 
   PermissionStatus _permissionStatus = PermissionStatus.initial;
@@ -65,6 +67,7 @@ class PhotoSelectionController extends ChangeNotifier {
     }
   }
 
+  @override
   Future<void> openAppSettings() => PhotoService.openSettings();
 
   // ─── 앨범 로드 ────────────────────────────────────────────────────────────
@@ -152,6 +155,9 @@ class PhotoSelectionController extends ChangeNotifier {
     await _loadPhotos();
   }
 
+  @override
+  Future<void> loadMore() => loadMorePhotos();
+
   // ─── 선택 관리 ────────────────────────────────────────────────────────────
 
   void toggleSelection(String assetId) {
@@ -163,6 +169,7 @@ class PhotoSelectionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void selectAll() {
     _selectedIds.addAll(_assets.map((a) => a.id));
     notifyListeners();

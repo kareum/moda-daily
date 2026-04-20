@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:photo_manager/photo_manager.dart' hide LatLng;
 
+import '../interfaces/i_travel_map_view_model.dart';
 import '../models/marker_style.dart';
 import '../models/photo_metadata.dart';
 
@@ -25,7 +26,7 @@ class MarkerGroup {
 /// - 입력 데이터(metadata, assetMap)는 생성 시 1회 주입 후 불변.
 /// - zoom 변화에 따라 클러스터를 재계산한다.
 /// - 선택된 마커를 추적하여 하단 패널을 제어한다.
-class TravelMapController extends ChangeNotifier {
+class TravelMapController extends ChangeNotifier implements ITravelMapViewModel {
   // ─── 입력 데이터 (불변) ─────────────────────────────────────────────────
 
   final List<PhotoMetadata> _allMetadata;

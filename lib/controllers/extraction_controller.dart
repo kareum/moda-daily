@@ -1,12 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:photo_manager/photo_manager.dart';
 
+import '../interfaces/i_extraction_view_model.dart';
 import '../models/extraction_result.dart';
 import '../services/photo_service.dart';
 
 /// 메타데이터 추출 작업의 상태를 관리한다.
-/// Screen은 이 Controller를 구독하고 진행 상황을 UI에 반영한다.
-class ExtractionController extends ChangeNotifier {
+///
+/// UI는 [IExtractionViewModel] 인터페이스만 통해 이 Controller와 상호작용한다.
+class ExtractionController extends ChangeNotifier
+    implements IExtractionViewModel {
   // ─── 상태 ─────────────────────────────────────────────────────────────────
 
   bool _isExtracting = false;

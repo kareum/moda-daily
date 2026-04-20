@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../controllers/archive_controller.dart';
 import '../core/database/app_database.dart';
+import '../core/di/app_dependencies.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_spacing.dart';
 import '../core/theme/app_typography.dart';
-import '../repositories/archive_repository.dart';
+import '../interfaces/i_archive_view_model.dart';
 import '../widgets/components/index.dart';
 import 'video_detail_screen.dart';
 
@@ -21,17 +22,17 @@ class ArchiveListScreen extends StatefulWidget {
 }
 
 class _ArchiveListScreenState extends State<ArchiveListScreen> {
-  late final ArchiveController _ctrl;
+  late final IArchiveViewModel _ctrl;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = ArchiveController(ArchiveRepository(AppDatabase()))..init();
+    _ctrl = AppDependencies.instance.createArchiveController();
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    (_ctrl as ArchiveController).dispose();
     super.dispose();
   }
 
@@ -89,7 +90,7 @@ class _ArchiveListScreenState extends State<ArchiveListScreen> {
       MaterialPageRoute(
         builder: (_) => VideoDetailScreen(
           archive: archive,
-          controller: _ctrl,
+          viewModel: _ctrl,
           initialEditMode: editMode,
         ),
       ),

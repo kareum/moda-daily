@@ -1,14 +1,14 @@
 import 'package:flutter/foundation.dart';
 
+import '../interfaces/i_caption_view_model.dart';
 import '../models/caption_style.dart';
 import '../models/photo_caption.dart';
 import '../repositories/caption_repository.dart';
 
 /// 사진별 캡션 문구를 관리한다.
 ///
-/// - 지도 화면에서 사진 선택 시 캡션 로드/입력/삭제
-/// - 영상 생성 시 [captionsFor]로 캡션 맵 전달
-class CaptionController extends ChangeNotifier {
+/// UI는 [ICaptionViewModel] 인터페이스만 통해 이 Controller와 상호작용한다.
+class CaptionController extends ChangeNotifier implements ICaptionViewModel {
   final CaptionRepository _repo;
 
   /// assetId → PhotoCaption 인메모리 캐시

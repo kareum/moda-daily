@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 
-import '../controllers/travel_map_controller.dart';
+import '../interfaces/i_travel_map_view_model.dart';
 import '../models/marker_style.dart';
 import '../models/photo_metadata.dart';
 
@@ -14,7 +14,7 @@ class MapPhotoMarker extends StatefulWidget {
   final PhotoMetadata metadata;
   final AssetEntity? asset;
   final bool isSelected;
-  final TravelMapController controller;
+  final ITravelMapViewModel controller;
   final VoidCallback onTap;
   final MarkerStyle style;
 

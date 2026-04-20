@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../controllers/extraction_controller.dart';
 import '../controllers/photo_selection_controller.dart';
+import '../core/di/app_dependencies.dart';
+import '../interfaces/i_extraction_view_model.dart';
+import '../interfaces/i_photo_selection_view_model.dart';
 import '../widgets/album_selector_sheet.dart';
 import '../widgets/date_filter_bar.dart';
 import '../widgets/extraction_progress_dialog.dart';
@@ -20,22 +23,21 @@ class PhotoSelectionScreen extends StatefulWidget {
 }
 
 class _PhotoSelectionScreenState extends State<PhotoSelectionScreen> {
-  late final PhotoSelectionController _selectionCtrl;
-  late final ExtractionController _extractionCtrl;
+  late final IPhotoSelectionViewModel _selectionCtrl;
+  late final IExtractionViewModel _extractionCtrl;
 
   @override
   void initState() {
     super.initState();
-    _selectionCtrl = PhotoSelectionController();
-    _extractionCtrl = ExtractionController();
-    // 권한 요청 + 앨범 로드 시작
-    _selectionCtrl.initialize();
+    _selectionCtrl = AppDependencies.instance.createPhotoSelectionController()
+      ..initialize();
+    _extractionCtrl = AppDependencies.instance.createExtractionController();
   }
 
   @override
   void dispose() {
-    _selectionCtrl.dispose();
-    _extractionCtrl.dispose();
+    (_selectionCtrl as PhotoSelectionController).dispose();
+    (_extractionCtrl as ExtractionController).dispose();
     super.dispose();
   }
 
@@ -123,7 +125,7 @@ class _PhotoSelectionScreenState extends State<PhotoSelectionScreen> {
                         isLoading: _selectionCtrl.isLoadingPhotos,
                         hasMore: _selectionCtrl.hasMorePhotos,
                         onToggle: _selectionCtrl.toggleSelection,
-                        onLoadMore: _selectionCtrl.loadMorePhotos,
+                        onLoadMore: _selectionCtrl.loadMore,
                       ),
               ),
             ],

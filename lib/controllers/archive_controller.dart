@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 import '../core/database/app_database.dart';
+import '../interfaces/i_archive_view_model.dart';
 import '../models/photo_caption.dart';
 import '../models/photo_metadata.dart';
 import '../repositories/archive_repository.dart';
@@ -12,8 +13,8 @@ import '../services/video_service.dart';
 
 /// 숏폼 영상 생성 → GPS 연결 → DB 저장 → 갤러리 저장을 오케스트레이션.
 ///
-/// UI는 [state]를 구독하고 [create], [applyEdit], [delete] 를 호출하기만 한다.
-class ArchiveController extends ChangeNotifier {
+/// UI는 [IArchiveViewModel] 인터페이스만 통해 이 Controller와 상호작용한다.
+class ArchiveController extends ChangeNotifier implements IArchiveViewModel {
   final ArchiveRepository _repo;
 
   ArchiveController(this._repo);
@@ -47,19 +48,21 @@ class ArchiveController extends ChangeNotifier {
   /// [metadataList]: 에셋과 1:1 대응하는 GPS 메타데이터
   /// [title]: 아카이브 제목
   /// [durationPerPhoto]: 사진 1장 노출 시간 (초)
+  @override
   Future<void> create({
-    required List<AssetEntity> assets,
+    required List<dynamic> assets,
     required List<PhotoMetadata> metadataList,
     required String title,
     double durationPerPhoto = 2.0,
     Map<String, PhotoCaption>? captions,
   }) async {
+    final typedAssets = assets.cast<AssetEntity>();
     _emit(const ArchiveState.creating(progress: 0.0));
 
     try {
       // 1. FFmpeg 영상 생성
       final videoPath = await VideoService.exportVideo(
-        assets: assets,
+        assets: typedAssets,
         durationPerPhoto: durationPerPhoto,
         outputFileName: _sanitizeFileName(title),
         captions: captions,
@@ -77,7 +80,7 @@ class ArchiveController extends ChangeNotifier {
         videoPath: videoPath,
         thumbnailPath: thumbPath,
         createdAt: DateTime.now(),
-        durationSeconds: (durationPerPhoto * assets.length).ceil(),
+        durationSeconds: (durationPerPhoto * typedAssets.length).ceil(),
         gpsPointCount: metadataList.length,
       );
 
@@ -145,6 +148,11 @@ class ArchiveController extends ChangeNotifier {
   }
 
   // ── 편집 이력 / 롤백 ──────────────────────────────────────────────────────
+
+  /// VideoDetailScreen에서 직접 Repository 접근 없이 GPS 포인트를 조회한다.
+  @override
+  Future<List<VideoGpsPoint>> getGpsPoints(int archiveId) =>
+      _repo.getGpsPoints(archiveId);
 
   Future<List<VideoEditHistoryData>> loadEditHistory(int archiveId) async {
     final history = await _repo.getEditHistory(archiveId);
